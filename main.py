@@ -1,14 +1,3 @@
-"""
-main.py — entry point.
-
-Chalane ke liye:
-    pip install -r requirements.txt
-    cp .env.example .env      # phir .env me BOT_TOKEN daalo
-    python main.py
-
-Testing (bina API ke):
-    .env me API_MOCK=1 rakho — dummy data se poora bot chal jaayega.
-"""
 from __future__ import annotations
 
 import logging
@@ -33,7 +22,6 @@ from store import EnrollmentStore
 log = logging.getLogger("scholarverse")
 
 
-# ---------------------------------------------------------------------------
 async def post_init(app: Application) -> None:
     api: ScholarVerseAPI = app.bot_data["api"]
     await api.start()
@@ -56,13 +44,12 @@ async def post_init(app: Application) -> None:
 
 
 async def post_shutdown(app: Application) -> None:
-    api: ScholarVerseAPI | None = app.bot_data.get("api")
+    api = app.bot_data.get("api")
     if api:
         await api.close()
     log.info("Bot band ho gaya.")
 
 
-# ---------------------------------------------------------------------------
 def build_app() -> Application:
     app = (
         Application.builder()
@@ -70,7 +57,7 @@ def build_app() -> Application:
         .concurrent_updates(True)
         .connect_timeout(30)
         .read_timeout(60)
-        .write_timeout(600)      # bade file upload ke liye
+        .write_timeout(600)
         .pool_timeout(30)
         .post_init(post_init)
         .post_shutdown(post_shutdown)
