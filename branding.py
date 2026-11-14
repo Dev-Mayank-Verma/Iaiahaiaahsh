@@ -1,9 +1,3 @@
-"""
-branding.py — TheScholarVerse.In ki saari branding ek jagah.
-
-Har message, har caption, har button isi file se aata hai. Naam badalna ho to
-sirf .env me BRAND_NAME change karo, ya yahan ke defaults.
-"""
 from __future__ import annotations
 
 from config import Settings
@@ -19,9 +13,6 @@ TAGLINE = SETTINGS.brand_tagline
 DIVIDER = "━━━━━━━━━━━━━━━━━━━━━━"
 THIN = "──────────────────────"
 
-# ---------------------------------------------------------------------------
-# Boilerplate
-# ---------------------------------------------------------------------------
 WELCOME = (
     f"🎓 <b>{BRAND}</b>\n"
     f"<i>{TAGLINE}</i>\n"
@@ -116,9 +107,6 @@ ABOUT = (
 )
 
 
-# ---------------------------------------------------------------------------
-# Chhote builders
-# ---------------------------------------------------------------------------
 def footer() -> str:
     return f"\n\n{THIN}\n🎓 <b>{BRAND}</b> • {WEBSITE}"
 
