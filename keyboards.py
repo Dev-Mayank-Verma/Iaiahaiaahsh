@@ -1,8 +1,3 @@
-"""keyboards.py — saare inline keyboards + callback data scheme.
-
-Callback data chhota rakhna zaroori hai (Telegram limit 64 bytes), isliye list
-me index bhejte hain, real id nahi — asli object user_data me rehta hai.
-"""
 from __future__ import annotations
 
 from telegram import InlineKeyboardButton as B
@@ -16,9 +11,6 @@ def _grid(rows: list[list[B]]) -> KB:
     return KB(rows)
 
 
-# ---------------------------------------------------------------------------
-#  Main menu
-# ---------------------------------------------------------------------------
 def main_menu() -> KB:
     return _grid([
         [B("📚 Batch chuno", callback_data="b:0")],
@@ -28,9 +20,6 @@ def main_menu() -> KB:
     ])
 
 
-# ---------------------------------------------------------------------------
-#  Batch home (subjects / tests / enroll)
-# ---------------------------------------------------------------------------
 def batch_home_kb(enrolled: bool) -> KB:
     enroll_label = "✅ Enrolled — hatao" if enrolled else "📌 Enroll karo"
     return _grid([
@@ -40,9 +29,6 @@ def batch_home_kb(enrolled: bool) -> KB:
     ])
 
 
-# ---------------------------------------------------------------------------
-#  Batch list  (server paginated)
-# ---------------------------------------------------------------------------
 def batches_kb(page: int, total_pages: int) -> KB:
     rows: list[list[B]] = []
     nav: list[B] = []
@@ -64,18 +50,7 @@ def batch_items_kb(batches, page: int) -> KB:
     return _grid(rows)
 
 
-# ---------------------------------------------------------------------------
-#  Generic list (subjects / topics / items) — client side paging
-# ---------------------------------------------------------------------------
-def list_kb(
-    labels: list[str],
-    prefix: str,
-    page: int,
-    total_pages: int,
-    back: str,
-    nav_prefix: str | None = None,
-) -> KB:
-    """prefix = item callback (s / t / c), nav_prefix = pager callback (sp / tp / cp)."""
+def list_kb(labels, prefix, page, total_pages, back, nav_prefix=None) -> KB:
     nav_prefix = nav_prefix or f"{prefix}p"
     rows: list[list[B]] = []
     for i, label in enumerate(labels):
@@ -91,9 +66,6 @@ def list_kb(
     return _grid(rows)
 
 
-# ---------------------------------------------------------------------------
-#  Content type filter
-# ---------------------------------------------------------------------------
 def content_types_kb(active: str) -> KB:
     def mark(key: str, label: str) -> B:
         return B(("✅ " if active == key else "") + label, callback_data=f"ct:{key}")
@@ -105,13 +77,10 @@ def content_types_kb(active: str) -> KB:
     ])
 
 
-def my_batches_kb(labels: list[str], page: int, total_pages: int) -> KB:
+def my_batches_kb(labels, page, total_pages) -> KB:
     return list_kb(labels, "myb", page, total_pages, back="m", nav_prefix="myp")
 
 
-# ---------------------------------------------------------------------------
-#  Item card
-# ---------------------------------------------------------------------------
 def item_kb(has_link: bool = True) -> KB:
     rows = [[B("⬇️ Download", callback_data="dl")]]
     if has_link:
