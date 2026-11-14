@@ -1,16 +1,3 @@
-"""
-store.py — Enrolled batches.
-
-Database ki zaroorat nahi — ek JSON file me save hota hai (WORK_DIR me).
-Bot restart hone pe bhi data bacha rehta hai.
-
-File format:
-{
-  "123456789": [
-    {"id": "...", "name": "...", "by": "...", "language": "...", "price": "..."}
-  ]
-}
-"""
 from __future__ import annotations
 
 import asyncio
@@ -34,7 +21,6 @@ class EnrollmentStore:
         self._data: dict[str, list[dict]] = {}
         self._loaded = False
 
-    # ---------------- internals ----------------
     def _load(self) -> None:
         if self._loaded:
             return
@@ -51,7 +37,7 @@ class EnrollmentStore:
         except FileNotFoundError:
             self._data = {}
         except (json.JSONDecodeError, OSError) as exc:
-            log.warning("enrollments.json padha nahi gaya (%s) — khaali se shuru", exc)
+            log.warning("enrollments.json padha nahi gaya (%s)", exc)
             self._data = {}
 
     def _save(self) -> None:
@@ -60,12 +46,11 @@ class EnrollmentStore:
         try:
             with os.fdopen(fd, "w", encoding="utf-8") as fh:
                 json.dump(self._data, fh, ensure_ascii=False, indent=1)
-            os.replace(tmp, self.path)          # atomic — file kabhi aadhi nahi likhti
+            os.replace(tmp, self.path)
         except BaseException:
             Path(tmp).unlink(missing_ok=True)
             raise
 
-    # ---------------- public API ----------------
     async def list_for(self, user_id: int) -> list[dict]:
         async with self._lock:
             self._load()
@@ -75,7 +60,6 @@ class EnrollmentStore:
         return any(b.get("id") == batch_id for b in await self.list_for(user_id))
 
     async def add(self, user_id: int, batch: dict) -> bool:
-        """True = naya enroll hua, False = pehle se tha."""
         async with self._lock:
             self._load()
             key = str(user_id)
@@ -106,7 +90,6 @@ class EnrollmentStore:
             return True
 
     async def toggle(self, user_id: int, batch: dict) -> bool:
-        """True = ab enrolled hai, False = hata diya."""
         if await self.has(user_id, str(batch.get("id"))):
             await self.remove(user_id, str(batch.get("id")))
             return False
