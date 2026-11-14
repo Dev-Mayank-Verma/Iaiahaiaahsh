@@ -1,16 +1,3 @@
-"""
-handlers.py — pura navigation + download + upload logic.
-
-Callback data scheme (keyboards.py dekho):
-  m            main menu
-  b:<page>     batch page
-  b:s:<pg>:<i> batch select
-  sp:<pg>      subject page          s:<pg>:<i> subject select
-  tp:<pg>      topic page            t:<pg>:<i> topic select
-  ct:<key>     content type filter
-  cp:<pg>      content page          c:<pg>:<i> content select
-  dl / lnk / cmp / abort / clr / bk:*
-"""
 from __future__ import annotations
 
 import asyncio
@@ -45,9 +32,6 @@ TYPE_LABEL = {"videos": "🎬 Videos", "notes": "📄 Notes", "dpp": "📝 DPP"}
 sem = asyncio.Semaphore(settings.concurrent_downloads)
 
 
-# ===========================================================================
-#  Guards
-# ===========================================================================
 async def _allowed(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
     user = update.effective_user
     if user is None:
@@ -91,9 +75,6 @@ def store_of(context: ContextTypes.DEFAULT_TYPE):
     return context.application.bot_data["store"]
 
 
-# ===========================================================================
-#  /start  /help  /about  /id  /cancel
-# ===========================================================================
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not await _allowed(update, context):
         return
@@ -161,9 +142,6 @@ async def cmd_batches(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     await _show_batches(msg, context, page=0, edit=False)
 
 
-# ===========================================================================
-#  Text handler (search)
-# ===========================================================================
 async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not await _allowed(update, context):
         return
@@ -212,9 +190,6 @@ def _merge(top, bottom):
     return InlineKeyboardMarkup(list(top.inline_keyboard) + list(bottom.inline_keyboard))
 
 
-# ===========================================================================
-#  Batches
-# ===========================================================================
 async def _show_batches(msg, context, page: int, edit: bool = True) -> None:
     api = api_of(context)
     try:
@@ -245,9 +220,6 @@ async def _select_batch(query, context, page: int, idx: int) -> None:
     await _show_batch_home(query, context, batches[idx])
 
 
-# ---------------------------------------------------------------------------
-#  Batch home — Subjects / Tests / Enroll
-# ---------------------------------------------------------------------------
 async def _show_batch_home(query, context, batch: Batch | None = None) -> None:
     if batch is not None:
         context.user_data["batch"] = batch
@@ -311,9 +283,6 @@ async def _toggle_enroll(query, context) -> None:
     await _show_batch_home(query, context)
 
 
-# ---------------------------------------------------------------------------
-#  Mere Batches (enrolled)
-# ---------------------------------------------------------------------------
 async def _show_my_batches(query, context, page: int = 0) -> None:
     rows = await store_of(context).list_for(query.from_user.id)
     context.user_data["my_batches"] = rows
@@ -409,10 +378,6 @@ async def _select_subject(query, context, page: int, idx: int) -> None:
     context.user_data.update(topics=topics, topic_pages=pages, topic_page=0)
     await _render_topics(query, context, 0)
 
-
-# ===========================================================================
-#  Topics
-# ===========================================================================
 async def _render_topics(query, context, page: int) -> None:
     api = api_of(context)
     batch = context.user_data["batch"]
@@ -461,9 +426,6 @@ async def _select_topic(query, context, page: int, idx: int) -> None:
     )
 
 
-# ===========================================================================
-#  Contents
-# ===========================================================================
 async def _render_contents(query, context, ctype: str, page: int = 0) -> None:
     if ctype == "videos":
         await _edit(query, MAINTENANCE, content_types_kb(context.user_data.get("ctype", "notes")))
@@ -533,9 +495,6 @@ async def _select_item(query, context, page: int, idx: int) -> None:
     await _edit(query, text, item_kb())
 
 
-# ===========================================================================
-#  Download + upload
-# ===========================================================================
 async def _do_download(query, context) -> None:
     item: Item | None = context.user_data.get("item")
     if item is None:
@@ -590,7 +549,7 @@ async def _deliver(query, context, path: Path, kind: str) -> None:
             f"⚠️ <b>File bada hai</b>\n{DIVIDER}\n"
             f"<b>Size:</b> {human_bytes(size)}\n"
             f"<b>Telegram limit:</b> {settings.max_upload_mb} MB\n\n"
-            f"Compress karke bhejun, ya direct link dun?\n\n{THIN}\n🎓 <b>{BRAND}</b>",
+            f"Direct link chahiye?\n\n{THIN}\n🎓 <b>{BRAND}</b>",
             big_file_kb(),
         )
         return
@@ -653,9 +612,6 @@ async def _send_link(query, context) -> None:
     )
 
 
-# ===========================================================================
-#  Progress reporter
-# ===========================================================================
 class ProgressReporter:
     def __init__(self, query, title: str) -> None:
         self.query = query
@@ -670,19 +626,19 @@ class ProgressReporter:
         self._last = now
         self._last_pct = info.percent
 
-        if info.total and info.total > 1_000_000:  # bytes mode (direct download)
+        if info.total and info.total > 1_000_000:
             bar = progress_bar(info.percent)
             detail = (
                 f"📦 {human_bytes(info.downloaded)} / {human_bytes(info.total)}\n"
                 f"⚡ {human_bytes(info.speed)}/s   ⏳ {human_time(info.eta)}"
             )
-        elif info.total:  # seconds mode (ffmpeg)
+        elif info.total:
             bar = progress_bar(info.percent)
             detail = (
                 f"⏱ {human_time(info.downloaded)} / {human_time(info.total)}\n"
                 f"⏳ {human_time(info.eta)} bacha"
             )
-        else:  # duration unknown — indeterminate bar
+        else:
             bar = progress_bar(50)
             detail = "⏳ Stream process ho raha hai…"
             info = ProgressInfo(**{**info.__dict__, "percent": 50.0})
@@ -692,9 +648,6 @@ class ProgressReporter:
         await _edit(self.query, title_block("📤", text, "") + f"🎓 <b>{BRAND}</b>")
 
 
-# ===========================================================================
-#  Edit helpers
-# ===========================================================================
 async def _edit(query, text: str, kb=None) -> None:
     try:
         await query.edit_message_text(
@@ -707,21 +660,14 @@ async def _edit(query, text: str, kb=None) -> None:
 
 async def _safe_edit(msg, text: str, kb, edit: bool) -> None:
     try:
-        if edit:
-            await msg.edit_text(text, parse_mode=ParseMode.HTML, reply_markup=kb,
-                                disable_web_page_preview=True)
-        else:
-            await msg.edit_text(text, parse_mode=ParseMode.HTML, reply_markup=kb,
-                                disable_web_page_preview=True)
+        await msg.edit_text(text, parse_mode=ParseMode.HTML, reply_markup=kb,
+                            disable_web_page_preview=True)
     except BadRequest as exc:
         if "not modified" not in str(exc).lower():
             await msg.reply_text(text, parse_mode=ParseMode.HTML, reply_markup=kb,
                                  disable_web_page_preview=True)
 
 
-# ===========================================================================
-#  Router
-# ===========================================================================
 async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     if query is None:
@@ -740,25 +686,25 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
             context.user_data.clear()
             await _edit(query, WELCOME.format(name=esc(query.from_user.first_name or "dost")), main_menu())
 
-        elif head == "b" and len(parts) == 2:          # b:<page>
+        elif head == "b" and len(parts) == 2:
             await query.answer()
             await _show_batches(query.message, context, int(parts[1]))
 
-        elif head == "b" and parts[1] == "s":          # b:s:<pg>:<i>
+        elif head == "b" and parts[1] == "s":
             await _select_batch(query, context, int(parts[2]), int(parts[3]))
 
-        elif head == "sp":                             # sp:<page>
+        elif head == "sp":
             await query.answer()
             await _render_subjects(query, context, int(parts[1]))
 
-        elif head == "s" and len(parts) == 3:          # s:<pg>:<i>
+        elif head == "s" and len(parts) == 3:
             await _select_subject(query, context, int(parts[1]), int(parts[2]))
 
-        elif head == "tp":                             # tp:<page>
+        elif head == "tp":
             await query.answer()
             await _render_topics(query, context, int(parts[1]))
 
-        elif head == "t" and len(parts) == 3:          # t:<pg>:<i>
+        elif head == "t" and len(parts) == 3:
             await _select_topic(query, context, int(parts[1]), int(parts[2]))
 
         elif head == "ct" and len(parts) > 1 and parts[1] == "locked":
@@ -771,9 +717,9 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
         elif head == "cp":
             await query.answer()
-            await _render_contents(query, context, context.user_data.get("ctype", "videos"), int(parts[1]))
+            await _render_contents(query, context, context.user_data.get("ctype", "notes"), int(parts[1]))
 
-        elif head == "c" and len(parts) == 3:          # c:<pg>:<i>
+        elif head == "c" and len(parts) == 3:
             await _select_item(query, context, int(parts[1]), int(parts[2]))
 
         elif head == "dl":
@@ -826,7 +772,7 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
             elif target == "topics":
                 await _render_topics(query, context, context.user_data.get("topic_page", 0))
             elif target == "contents":
-                await _render_contents(query, context, context.user_data.get("ctype", "videos"),
+                await _render_contents(query, context, context.user_data.get("ctype", "notes"),
                                        context.user_data.get("item_page", 0))
 
         elif head == "srch":
@@ -846,15 +792,12 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         else:
             await query.answer()
 
-    except Exception:  # pragma: no cover
+    except Exception:
         log.exception("callback failed: %s", data)
         with contextlib.suppress(Exception):
             await query.answer("Kuch gadbad ho gayi, /start try karo.", show_alert=True)
 
 
-# ===========================================================================
-#  Error handler
-# ===========================================================================
 async def on_error(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
     log.exception("Unhandled error", exc_info=context.error)
     if isinstance(update, Update) and update.effective_message:
@@ -863,4 +806,4 @@ async def on_error(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
                 error_block("Internal error aa gaya. Dobara try karo."),
                 parse_mode=ParseMode.HTML,
                 reply_markup=main_menu(),
-            )
+      )
